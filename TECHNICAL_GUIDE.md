@@ -5,7 +5,35 @@ This is the deep-dive doc. The main [README](./README.md) tells people what Tagi
 ---
 📁 Project Stucture
 
-```Tagify [MANUAL]/
+```
+Tagify__MANUAL_/
+├── configs/
+│   ├── bpm_mood_tagger.json
+│   ├── local_genre_tagger.json
+│   ├── local_lyrics_tagger.json
+│   ├── online_genre_tagger.json
+│   ├── online_lyrics_tagger.json
+│   └── spotify_tagger.json
+├── failed/
+│   ├── instrumental/
+│   │   ├── Geoxor - Aurora.ogg
+│   │   └── N!GHT - Yume.ogg
+│   ├── no_genre/
+│   │   └── BellyJay - MONTAGEM HASHIRU.ogg
+│   └── no_lyrics/
+│       └── N!GHT - Yume.ogg
+├── logs/
+│   ├── bpm_mood.log
+│   ├── bpm_mood_checkpoint.json
+│   ├── feature_stats.json
+│   ├── genre__offline.log
+│   ├── genre_offline_checkpoint.json
+│   ├── genre_online.log
+│   ├── genre_online_artist_cache.json
+│   ├── genre_online_checkpoint.json
+│   ├── lyrics_offline.log
+│   ├── lyrics_offline_checkpoint.json
+│   └── ...
 ├── scripts/
 │   ├── bpm_mood_tagger.py
 │   ├── local_genre_tagger.py
@@ -13,6 +41,14 @@ This is the deep-dive doc. The main [README](./README.md) tells people what Tagi
 │   ├── online_genre_tagger.py
 │   ├── online_lyrics_tagger.py
 │   └── spotify_tagger.py
+├── temp/
+│   ├── 2 Man Embassy - The End.ogg
+│   ├── BellyJay - MONTAGEM HASHIRU.ogg
+│   ├── Geoxor - Aurora.ogg
+│   ├── Leat'eq - Tokyo - Bubblegum.ogg
+│   ├── N!GHT - Yume.ogg
+│   ├── NEFFEX - Rumors.ogg
+│   └── The Chainsmokers - Closer.ogg
 ├── venvs/
 │   ├── bpm_mood_tagger/
 │   ├── local_genre_tagger/
@@ -34,24 +70,6 @@ Every module in Tagify — regardless of what it tags — follows the same four 
 3. **Soft failures flow through; hard failures halt.** A "no match found" or "unparseable filename" is not treated as broken — the file still gets copied to `outputs/` (just without that tag) and the run continues. A *real* error — network down, disk full, can't write a tag — stops the whole script immediately so you can fix the actual problem instead of the script burning through the rest of the run half-broken.
 4. **Config is remembered, not hardcoded.** Nothing requires editing the script before first run. Input/output folders (and credentials, for Spotify and last.fm) are asked for interactively once and cached to `configs/<script_name>.json`; pressing Enter on future runs reuses the saved value.
 
-### Shared folder layout
-
-```
-Tagify/
-├── scripts/            → the 6 tagger .py files
-├── venvs/               → one conda env per module (created by setup_venvs.bat)
-├── configs/              → saved input/output paths + credentials, per script
-├── logs/                 → DEBUG-level .log, checkpoint .json, and any caches, per script
-├── temp/                 → working copies while a file is actively being tagged
-├── failed/<reason>/      → catalogued copies of anything that hit a soft failure
-└── outputs/               → the finished, tagged files (default output folder)
-```
-
-`temp/`, `failed/`, and `outputs/` are shared conceptually across modules but not physically namespaced — if you run multiple modules against the same input folder, each pass is additive (a file tagged by Spotify Tagger, then run through Genre Tagger, ends up with both sets of tags, since each module reads/writes different Vorbis fields).
-
-![Folder and data flow diagram](./images/folder-data-flow.png)
-*Placeholder — arrows showing input → temp → (tag) → output/failed.*
-
 ---
 
 ## 2. Environment Architecture
@@ -72,11 +90,9 @@ Each module gets its own isolated conda environment because their dependency tre
 - **`musicnn` is installed with `--no-deps`.** Its published metadata pins `numpy<1.17`, which conflicts with the numpy version TensorFlow 2.10 actually needs. Skipping dependency resolution here is intentional, not an oversight.
 - **Both GPU-based offline modules use *system* ffmpeg, not conda-forge's.** conda-forge's ffmpeg build was seen crashing with `STATUS_DLL_NOT_FOUND` / `0xC0000135` on at least one real machine. System ffmpeg on PATH is required for `local_genre_tagger` and `local_lyrics_tagger` specifically.
 - **`local_genre_tagger`'s GPU check commonly fails on a missing `zlibwapi.dll`** — that DLL is a cuDNN 8.1-on-Windows requirement, not a Tagify bug. MusicNN still runs on CPU if it's missing, just slower.
-- **There's a known, deliberately-unfixed comment/code mismatch.** An old comment block in `setup_venvs.bat` references a filename override for `bpm_mood_tagger` (something about a `+` in the filename). That override doesn't exist anywhere in the actual script — every module resolves its script file the same generic way. It's left alone because neither side (comment vs. code) was worth guessing at changing without knowing which one was "correct" — flagged in the batch file's own header comment instead.
-- **`conda run` is deliberately avoided for the live-progress bar.** There's a documented Windows bug (`conda/conda#9700`) where `conda run` clears terminal output mid-command. The setup script invokes conda's base `python.exe` directly instead, with a small embedded Python script driving a `tqdm` progress bar.
+- **`conda run` is deliberately avoided for the live-progress bar.** There's a documented Windows bug (`conda/conda#9700`) where `conda run` clears terminal output mid-command. The setup script invokes conda's base `python.exe` directly instead, with a small embedded Python script driving a colormatched `tqdm` progress bar.
 
-![Environment setup flow](./images/setup-venvs-flow.png)
-*Placeholder — flowchart of setup_venvs.bat: check conda → per-module create env → install deps → verify imports → GPU check.*
+<img width="965" height="1233" alt="Screenshot 2026-08-05 105800" src="https://github.com/user-attachments/assets/f7af4701-5c5b-44df-bffb-18bff1e5a534" />
 
 ---
 
@@ -87,11 +103,13 @@ Each module gets its own isolated conda environment because their dependency tre
 - **Filename contract:** expects `Artist - Title.ogg`. Files without a `" - "` separator are logged and routed to `failed/bad_filename/` — this is a soft failure, not a halt.
 - **Search strategy:** for each file, tries three query shapes in order — a strict `artist:"X" track:"Y"` query, an unquoted field query, then a plain free-text query — stopping at the first hit.
 - **Title cleaning:** strips `(feat. X)` / `[ft. X]` / `(with X)` annotations from the matched title via regex before writing the `title` tag.
-- **Rate limiting:** tracks a soft daily budget of 700 calls in `logs/spotify_daily_stats.json`, reset at local midnight. Going over the budget prints a warning but does **not** stop the run — you may start seeing HTTP 429s from Spotify if you push past it.
+- **Rate limiting:** tracks a soft daily budget of 700 calls in `logs/spotify_daily_stats.json`, reset at local midnight or after 24 hours when limit is reached. Going over the budget prints a warning but does **not** stop the run — you may start seeing HTTP 429s from Spotify if you push past it.
 - **429 handling:** on an actual 429 response, it respects Spotify's `Retry-After` header (plus a few seconds of random jitter) before retrying that query.
 - **Server errors (5xx)** and **connection-level failures** are both treated as network errors, which halts the whole pipeline for manual review rather than silently continuing.
 - **Album art:** downloads the largest available cover image and embeds it as a 640×640 JPEG in the `metadata_block_picture` tag (base64-encoded FLAC Picture block, the standard Vorbis Comment convention).
 - **Politeness delay:** ~1.8s ± 0.6s jitter between files, skipped only for filename-skip cases (nothing was actually requested from Spotify for those).
+
+<img width="1102" height="986" alt="Screenshot 2026-08-05 151419" src="https://github.com/user-attachments/assets/8b6a8453-a3ca-4b00-843c-0f678eda109d" />
 
 ### 🌐📝 Lyrics Tagger — Online
 
@@ -100,6 +118,8 @@ Each module gets its own isolated conda environment because their dependency tre
 - All returned lyrics are stripped of timestamp markup (e.g. `[00:12.34]`) and metadata lines (e.g. `作词 :`, `作曲 :`, `Lyrics:`) before being written, so only clean lyric text lands in the `LYRICS` tag.
 - **Instrumental detection** triggers on a title containing a known instrumental keyword (e.g. "bgm", "(inst.)") or LRCLib explicitly flagging the track as instrumental — either short-circuits straight to "instrumental" without trying the remaining sources.
 - If literally every source fails due to connectivity issues, the file goes to `failed/network_error/` and is retried on the next run — it's never marked "done" in that case.
+
+<img width="1184" height="896" alt="Screenshot 2026-08-05 151412" src="https://github.com/user-attachments/assets/c1772933-245f-49c2-9f4a-616e2b4af128" />
 
 ### 📝 Lyrics Tagger — Offline
 
@@ -114,8 +134,7 @@ The most involved module in the suite. Six-stage pipeline per file:
 
 Segment-level filtering also happens during transcription: any segment with `no_speech_prob > 0.85` or `avg_logprob < -2.00` is dropped before the instrumental gates even run.
 
-![Offline lyrics pipeline stages](./images/lyrics-offline-pipeline.png)
-*Placeholder — Demucs → ffmpeg → DeepFilterNet3 → Whisper → gates, as a horizontal pipeline diagram.*
+<img width="1483" height="1170" alt="Screenshot 2026-08-05 151359" src="https://github.com/user-attachments/assets/4fd08c89-0e87-4f7f-ab46-4b57f5814c51" />
 
 **Note:** on Windows, this script does a one-time `os.add_dll_directory()` fix pointing at PyTorch's bundled DLL folder — a workaround for a common cuDNN-loading issue with PyTorch on Windows, applied before `torch` is imported.
 
@@ -126,11 +145,15 @@ Segment-level filtering also happens during transcription: any segment with `no_
 - **MusicBrainz enforces 1 request/second** on its own end — it's by far the slowest of the three sources and the main per-file time cost in this module.
 - **Artist-level lookups are cached** to `logs/genre_online_artist_cache.json`, so re-running the script (or processing a library with many tracks per artist) never re-spends a network call on an artist you've already looked up. This is the single biggest speed lever in this module — unique-artist count is almost always far smaller than track count.
 
+<img width="1038" height="1380" alt="Screenshot 2026-08-05 151405" src="https://github.com/user-attachments/assets/3139cb85-0647-451a-904b-235ba1c7fffa" />
+
 ### ♪ Genre Tagger — Offline
 
 - Uses **MusicNN** (TensorFlow) to classify up to 3 genres per track, fully offline.
 - No Last.fm/iTunes/MusicBrainz querying at all — purely audio-feature-based inference from the trained model.
 - Same checkpoint/retry semantics as the other offline modules: `error` entries are retried automatically, `done` entries are always skipped.
+
+<img width="1054" height="1175" alt="Screenshot 2026-08-05 151352" src="https://github.com/user-attachments/assets/f2e15468-896a-44db-a5d7-9d3da1f67b3f" />
 
 ### 🎧 BPM + Mood Tagger
 
@@ -141,8 +164,7 @@ Segment-level filtering also happens during transcription: any segment with `no_
   3. Each song is then matched to whichever of **23 mood prototypes** sits closest to its normalized feature profile, using a weighted Euclidean distance.
 - Because pass 1 requires scanning the whole folder up front, this module's startup is slower than the others on a first run — but the cached `feature_stats.json` is reused on subsequent runs unless the input folder changes significantly.
 
-![Mood classification: Z-score + prototype matching](./images/mood-classifier-diagram.png)
-*Placeholder — scatter plot or radar chart illustrating the 23 mood prototypes and Z-score normalization.*
+<img width="1044" height="1137" alt="Screenshot 2026-08-05 151345" src="https://github.com/user-attachments/assets/569a81d1-ccfd-4dc4-be60-fe497de34f1c" />
 
 ---
 
@@ -174,13 +196,13 @@ Each module's `CONFIG` block sits near the top of its script. The values worth k
 | `HARD_ABORT_LOGPROB` | Lyrics Offline | `-0.60` | Below this, a track is declared instrumental outright |
 | `MIN_TOTAL_WORDS` | Lyrics Offline | `15` | Minimum kept-segment word count to avoid the instrumental gate |
 
-Input/output folders and (for Spotify Tagger) credentials are **not** in the `CONFIG` block — they're prompted for interactively on first run and saved to `configs/<script_name>.json`. Delete that file to be re-prompted from scratch.
+Input/output folders and credentials are **not** in the `CONFIG` block — they're prompted for interactively on first run and saved to `configs/<script_name>.json`. Delete that file to be re-prompted from scratch.
 
 ---
 
 ## 6. Further Troubleshooting
 
-Beyond what's in the main README:
+Beyond what's in the main [README](https://github.com/RaneKun/Tagify/blob/a96a1aa1f20c30d4d53dd5ba853f506e375f2983/README.md):
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
@@ -190,21 +212,4 @@ Beyond what's in the main README:
 | A whole run halts on file #1 of a large batch | An `error`-tier failure (not miss/skip) | Check the relevant module's `.log` in `logs/` for the actual exception — this is intentional pipeline-halt behavior, not a hang |
 | `local_genre_tagger` env creation fails resolving numpy conflicts | musicnn's stale `numpy<1.17` pin | Already handled via `--no-deps` in `setup_venvs.bat` — if you're installing manually, replicate that flag |
 | MusicBrainz-sourced genres take much longer than Last.fm/iTunes | Expected — MusicBrainz enforces 1 req/sec on their end | Not fixable client-side without violating their rate limit; the artist-level cache in `logs/genre_online_artist_cache.json` is the main mitigation for repeat runs |
-| A `bpm_mood_tagger` run seems to "hang" at the very start | Pass 1 is scanning the whole library to build `feature_stats.json` | Expected on first run against a large folder — subsequent runs reuse the cached stats file |
-
----
-
-## 7. Screenshots / Visuals
-
-![Spotify Tagger console output example](./images/spotify-tagger-console.png)
-*Placeholder — a real terminal capture of a Spotify Tagger run, showing the banner + per-file lines.*
-
-![Offline Lyrics Tagger console output example](./images/lyrics-offline-console.png)
-*Placeholder — a real terminal capture showing the pipeline stage log lines ([1/6]…[6/6]).*
-
-![Example tagged file metadata](./images/example-tagged-metadata.png)
-*Placeholder — a screenshot of a finished .ogg file's tags (e.g. in MusicBee, foobar2000, or Mp3tag) showing all the fields Tagify wrote.*
-
----
-
-*This guide covers the Manual Edition only. Once the automated/pipeline edition exists, its own internals will get a separate write-up rather than folding into this one.*
+| A `bpm_mood_tagger` run seems to "hang" at the very start | Pass 1 is scanning the whole library to build `feature_stats.json` | Expected on first run against a large library |
