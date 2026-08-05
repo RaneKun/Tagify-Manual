@@ -88,6 +88,7 @@ Input/output folders and credentials are set interactively on first run and save
 - Every module treats your input folder as **read-only** — files are copied to `temp/` before anything is written, and only the finished copy lands in `outputs/`.
 - Filenames for the Spotify Tagger must follow `Artist - Title.ogg`; anything without a `" - "` separator is logged and skipped.
 - All modules log everything (DEBUG level) to their own file under `logs/`, even when the console only shows a summary.
+- For further technical info click [here](https://github.com/RaneKun/Tagify/blob/3e3339dac4fd8269d4d27bdb34ee66ea22017b07/TECHNICAL_GUIDE.md)
 
 ## 🙏 Credits
 
