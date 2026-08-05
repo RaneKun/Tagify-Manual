@@ -31,7 +31,10 @@ REM                                         STATUS_DLL_NOT_FOUND / 0xC0000135 on
 REM                                         at least one real-world machine).
 REM    local_lyrics_tagger   py3.11  GPU   (Demucs + DeepFilterNet3 + faster-whisper  [magenta]
 REM                                         on official PyTorch cu121 wheels).
-REM                                         Also uses SYSTEM ffmpeg for the same
+REM                                         Also installs cudatoolkit=12.2 + cudnn
+REM                                         from conda-forge to provide the missing
+REM                                         cudnn_graph64_9.dll that DeepFilterNet
+REM                                         requires. Uses SYSTEM ffmpeg for the same
 REM                                         reason as local_genre_tagger above.
 REM
 REM  NOTE ON THE "+" TYPO: the block comment above (inherited from an earlier
@@ -566,7 +569,11 @@ call :SKIP "%NAME%"
 
 REM ===========================================================================
 REM  2f. local_lyrics_tagger   (Demucs + DeepFilterNet3 + faster-whisper, GPU
-REM                             via official PyTorch cu121 wheels)
+REM                             via official PyTorch cu121 wheels).
+REM
+REM  FIX: install cudatoolkit=12.2 + cudnn from conda-forge BEFORE PyTorch
+REM  to provide cudnn_graph64_9.dll that DeepFilterNet loads dynamically.
+REM  This is only done when a GPU is detected.
 REM ===========================================================================
 set "NAME=local_lyrics_tagger"
 set "SCRIPT_FILE=%NAME%.py"
@@ -591,6 +598,17 @@ call :LOG "%NAME%: skipping conda-forge ffmpeg (using system ffmpeg instead - se
 call :CHECK_SYS_FFMPEG "%NAME%"
 
 call :RUN_PROGRESS "pipupgrade" "%ENV_PATH%" 2 "%NAME%: upgrading pip" "none" "none" "none"
+
+REM ---- Install CUDA toolkit and cuDNN from conda-forge to provide missing DLLs ----
+if "%GPU_AVAILABLE%"=="1" (
+    call :RUN_PROGRESS "condainstall" "%ENV_PATH%" 700 "%NAME%: installing cudnn via conda-forge" "conda-forge" "cudnn" "-q --copy"
+    if errorlevel 1 (
+        call :ERR "%NAME%: cudatoolkit/cudnn install FAILED - see log. Proceeding without, may cause cudnn errors."
+    )
+) else (
+    call :INFO "%NAME%: GPU not available - skipping cudatoolkit/cudnn install, using CPU-only PyTorch"
+)
+REM ---- End of new block ----
 
 if "%GPU_AVAILABLE%"=="0" goto :LL_CPU_TORCH
 call :RUN_PROGRESS "pipinstall" "%ENV_PATH%" 2800 "%NAME%: installing torch/torchvision/torchaudio (CUDA 12.1, large download, please wait)" "torch torchvision torchaudio" "--index-url https://download.pytorch.org/whl/cu121" "none"
