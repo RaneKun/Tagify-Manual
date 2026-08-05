@@ -1,9 +1,27 @@
 # 🛠️ Tagify — Technical Guide (Manual Edition)
 
-This is the deep-dive doc. The main [README](./README.md) tells people what Tagify does; this file explains **how**, **why it's built this way**, and **what to do when it breaks**. Written for future-you (or anyone poking around the source) more than for a first-time visitor.
+This is the deep-dive doc. The main [README](./README.md) tells people what Tagify does; this file explains **how**, **why it's built this way**, and **what to do when it breaks**.
 
-![Tagify architecture overview](./images/architecture-overview.png)
-*Placeholder — overview diagram of all 6 modules and shared folder structure.*
+---
+📁 Project Stucture
+
+```Tagify [MANUAL]/
+├── scripts/
+│   ├── bpm_mood_tagger.py
+│   ├── local_genre_tagger.py
+│   ├── local_lyrics_tagger.py
+│   ├── online_genre_tagger.py
+│   ├── online_lyrics_tagger.py
+│   └── spotify_tagger.py
+├── venvs/
+│   ├── bpm_mood_tagger/
+│   ├── local_genre_tagger/
+│   ├── local_lyrics_tagger/
+│   ├── online_genre_tagger/
+│   ├── online_lyrics_tagger/
+│   └── spotify_tagger/
+└── setup_venvs.bat
+```
 
 ---
 
@@ -13,8 +31,8 @@ Every module in Tagify — regardless of what it tags — follows the same four 
 
 1. **Originals are sacred.** `INPUT_DIR` is opened read-only. Every file is `shutil.copy2`'d into `temp/` before anything touches it. Nothing is ever written back to the input folder.
 2. **Checkpoint after every single file, not every batch.** Progress JSON is rewritten to disk after each file completes — not buffered, not saved every N files. If the process dies mid-run (crash, power cut, Ctrl+C), at most one file's work is lost.
-3. **Soft failures flow through; hard failures halt.** A "no match found" or "unparseable filename" is not treated as broken — the file still gets copied to `outputs/` (just without that tag) and the run continues. A *real* error — network down, disk full, can't write a tag — stops the whole script immediately so you can fix the actual problem instead of the script burning through the rest of the run half-broken. See §4.
-4. **Config is remembered, not hardcoded.** Nothing requires editing the script before first run. Input/output folders (and credentials, for Spotify) are asked for interactively once and cached to `configs/<script_name>.json`; pressing Enter on future runs reuses the saved value.
+3. **Soft failures flow through; hard failures halt.** A "no match found" or "unparseable filename" is not treated as broken — the file still gets copied to `outputs/` (just without that tag) and the run continues. A *real* error — network down, disk full, can't write a tag — stops the whole script immediately so you can fix the actual problem instead of the script burning through the rest of the run half-broken.
+4. **Config is remembered, not hardcoded.** Nothing requires editing the script before first run. Input/output folders (and credentials, for Spotify and last.fm) are asked for interactively once and cached to `configs/<script_name>.json`; pressing Enter on future runs reuses the saved value.
 
 ### Shared folder layout
 
