@@ -2,7 +2,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+![License](https://img.shields.io/badge/RaneKun-Open--Use--License-yellow.svg)
 
 A suite of standalone Python scripts that tag `.ogg` music libraries with rich metadata — Spotify info, lyrics, genre, and BPM/mood — written straight into the file's Vorbis comment tags. Each script is its own mini-tool with its own conda environment, so you only set up (and run) the ones you actually need.
 
