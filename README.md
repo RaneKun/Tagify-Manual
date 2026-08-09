@@ -7,7 +7,7 @@
 A suite of standalone Python scripts that tag `.ogg` music libraries with rich metadata — Spotify info, lyrics, genre, and BPM/mood — written straight into the file's Vorbis comment tags. Each script is its own mini-tool with its own conda environment, so you only set up (and run) the ones you actually need.
 
 > - This is best used with [Spytify](https://github.com/jwallet/spy-spotify) with `.wav` download and then [converting](https://github.com/Tichau/FileConverter) that to `.ogg` format for the best Spotify quality feel.
-> - This is the **Manual Edition** — each tagger is run by hand, one at a time. An automated/pipeline version that chains all of them together is in [here]().
+> - This is the **Manual Edition** — each tagger is run by hand, one at a time. An automated/pipeline version that chains all of them together is in [here](https://github.com/RaneKun/Tagify-Auto).
 
 ## ✨ Modules
 
