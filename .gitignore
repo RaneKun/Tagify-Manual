@@ -1,0 +1,39 @@
+# ── Tagify runtime folders (created automatically by the scripts) ──────────
+# These hold your local music paths, saved credentials, logs, and working
+# copies — none of it belongs in version control.
+venvs/
+configs/
+logs/
+temp/
+failed/
+outputs/
+
+# ── Python ───────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+
+# ── Virtual environments (in case one ever gets created outside venvs/) ───
+venv/
+.venv/
+env/
+ENV/
+
+# ── Environment / secrets ───────────────────────────────────────────────
+.env
+*.env
+
+# ── IDE ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+
+# ── OS junk ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
