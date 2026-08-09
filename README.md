@@ -91,6 +91,12 @@ Input/output folders and credentials are set interactively on first run and save
 - All modules log everything (DEBUG level) to their own file under `logs/`, even when the console only shows a summary.
 - For further technical info click [here](https://github.com/RaneKun/Tagify/blob/3e3339dac4fd8269d4d27bdb34ee66ea22017b07/TECHNICAL_GUIDE.md)
 
+## 💭 Why I Built This
+
+Spotify's catalog isn't stable — labels pull tracks, artists get delisted, whole albums vanish from your library overnight with zero warning. Songs I loved for years have quietly **disappeared** more than once. So I record what I care about with [Spytify](https://github.com/jwallet/spy-spotify) — but a `.wav` or `.mp3` straight off that pipeline is basically a blank slate: no lyrics, no genre, often no cover art, just a filename. *That's a visual downgrade and hurts the point of preserving something if what you're left with is worse than the first experience.*
+
+Tagify is the other half of that: <ins>it takes those bare files and builds back</ins> — and in places **exceeds** — what Spotify's own app displays. Full album art, accurate metadata, multilingual lyrics, genre tags pulled from multiple sources and cross-checked, even BPM and mood data Spotify never exposed to begin with. The result is a library that's not just "saved," but archived properly — metadata-rich, searchable, and playable in any player, forever, regardless of what Spotify does next.
+
 ## 🙏 Credits
 
 **Made with ♥ by Rane Kun**
