@@ -3,7 +3,7 @@
 This is the deep-dive doc. The main [README](./README.md) tells people what Tagify does; this file explains **how**, **why it's built this way**, and **what to do when it breaks**.
 
 ---
-📁 Project Stucture
+## 📂 Project Stucture (as per example)
 
 ```
 Tagify__MANUAL_/
